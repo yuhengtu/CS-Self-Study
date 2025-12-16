@@ -23,10 +23,11 @@ If I have uploaded inappropriate content, please contact me at yuhengtuece@gmail
   - UCB CS170 24sp
   - Acwing Data Structure & Algorithm
 
-- Machine Learning
+- Machine Learning / Artificial Intelligence
   - Coursera ML 22
   - UCB CS189 24sp
   - NTU DL(HUNGYI-LEE) 22sp
+  - Stanford-CS336-25sp
 - Cryptography
   - UCB CS171 24sp
 
