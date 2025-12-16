@@ -900,12 +900,6 @@ resnet
 
 ![image-20231023210410292](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240957019.png)
 
-语音上每25ms信号对应的向量叫frame，每两个frame隔10ms
-
-![image-20231023212141421](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240957657.png)
-
-Graph的每个vertex是一个向量
-
 case1：输入几个向量，输出几个label，POStagging 词性标注
 
 ![image-20231023212632502](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240957006.png)
@@ -920,59 +914,39 @@ case1：输入几个向量，输出几个label
 
 saw有时是名词有时是动词，函数只能映射到一个输出，解决方法：take in前后相邻内容
 
-![image-20231023213311256](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240958340.png)
+![image-20231023213311256](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240958340.png)![image-20231023213814662](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240958458.png)![image-20231023213827441](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240958938.png)
 
-但是句子长短不一，如何确定window的大小？
-
-![image-20231023213814662](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240958458.png)
-
-![image-20231023213827441](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310240958938.png)
-
-如何计算两个vector间权重？常用dot-product法（transformer所用）
+如何计算两个vector间相似度？常用dot-product法（transformer所用）
 
 ![image-20231024100406594](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241004656.png)
 
-最后可以用relu代替softmax
+QK计算相似度权重，过softmax得到attention score；V即内容，内容乘权重求和得到b
 
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241007118.png" alt="image-20231024100706081" style="zoom: 25%;" />
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241007118.png" alt="image-20231024100706081" style="zoom: 20%;" />![image-20231024100817224](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241008281.png)
 
-![image-20231024100817224](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241008281.png)
+terminology: A’ is attention matrix；需要学的参数：三个W矩阵；整个layer的input和output是I和O矩阵
 
-矩阵运算角度，I矩阵的四个column分别是a1a2a3a4，A’是attention matrix；需要学的参数，三个W矩阵；整个layer的input和output是I和O矩阵
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241020727.png" alt="image-20231024102033662" style="zoom:30%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061937429.png" alt="image-20251106193706277" style="zoom:50%;" />
 
-![image-20231024102033662](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241020727.png)
-
-![image-20231024102255552](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241022582.png)
-
-![image-20231024102638731](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241026773.png)
-
-更常用的是multi head self-attention，head数量是超参数，就是生成n组qkv，每组各自做以上运算出bi1和bi2
+multi head self-attention，head数量是超参数，就是生成n组qkv
 
 ![image-20231024103522050](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241035104.png)
 
-***
-
-目前self- attention没考虑到位置的资讯，positional vector 上标i表示位置序号，position encoding待研究，也可以根据资料学出来，在原始论文attention is all you need中通过sincos function手动产生positional vector，就为了不同位置不同feature
+positional vector上标i表示位置序号；sincos function手动产生positional vector，为了不同位置不同feature
 
 <img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241039089.png" alt="image-20231024103959048" style="zoom:25%;" />
 
-![image-20231024104208999](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241042041.png)
+transformer / Bert都用了self-attention
 
-transformer Bert（NLP）都用了self-attention
-
-语音识别中因为向量太多，运算量太大，使用truncated self-attention，只看一个小的范围，不看一整句话
+语音识别中因为向量太长，运算量太大，使用truncated self-attention，只看一个小的范围，不看一整句话
 
 把图片看作vector set 三维向量，W*H个
 
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241048619.png" alt="image-20231024104829577" style="zoom:25%;" />
-
-![image-20231024104920577](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241049612.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241048619.png" alt="image-20231024104829577" style="zoom:5%;" />
 
 CNN只考虑感受野内信息，感受野人工划定；self- attention考虑整张图片的信息，学习出比较重要的部分，类似学习出一个感受野；数据量小用CNN，大用self- attention；经过精心设计，self- attention可以变成CNN；理论推导见以下论文
 
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241053163.png" alt="image-20231024105336120" style="zoom:25%;" />
-
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241056178.png" alt="image-20231024105616120" style="zoom:25%;" />
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241053163.png" alt="image-20231024105336120" style="zoom:5%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241056178.png" alt="image-20231024105616120" style="zoom:5%;" />
 
 HW4中strong baseline 使用Conformer，CNN + self-attention 
 
@@ -988,7 +962,7 @@ graph self-attention，仅计算相连的node的attention，其他置0，就是G
 
 self-attention有很多变形，主要问题是计算量大；横轴speed，纵轴performance
 
-![image-20231024111451119](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241114184.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202310241114184.png" alt="image-20231024111451119" style="zoom:5%;" />
 
 
 
@@ -1210,25 +1184,11 @@ Adjacency matrix 邻接矩阵
 
 # Transformer
 
-seq2seq，关键在于机器自己决定输出长度 
+seq2seq，关键在于机器自己决定输出长度（语音识别；语音合成：输入中文文字，输出台语声音；chatbot）
 
-speech translation，没有文字的语言
+NLP任务基本都可以表示为seq2seq；树状结构也可以表示成seq，1412.7449 Grammar as a Foreign Language
 
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151715361.png" alt="image-20231115171530265" style="zoom:25%;" />
-
-语音合成：输入中文文字，输出台语声音 
-
-chatbot
-
-NLP的绝大多数课题都可以理解为 question answering；但是客制化专用模型往往比seq2seq效果好
-
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151723142.png" alt="image-20231115172334054" style="zoom:25%;" />
-
-树状结构也可以表示成seq，1412.7449 Grammar as a Foreign Language
-
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151727609.png" alt="image-20231115172738554" style="zoom:25%;" />
-
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151732499.png" alt="image-20231115173206444" style="zoom:15%;" /><img src="../Library/Application Support/typora-user-images/image-20231115173225825.png" alt="image-20231115173225825" style="zoom:15%;" />
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151715361.png" alt="image-20231115171530265" style="zoom:5%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151727609.png" alt="image-20231115172738554" style="zoom:5%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151732499.png" alt="image-20231115173206444" style="zoom:5%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511031546202.png" alt="image-20231115173225825" style="zoom:5%;" />
 
 ***
 
@@ -1238,51 +1198,35 @@ seq2seq模型架构
 
 encoder输入输出长度一致
 
-![image-20231115173518533](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151735590.png)
+![image-20231115173518533](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151735590.png)![image-20231115173903421](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151739484.png)
 
-![image-20231115173903421](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151739484.png)
-
-transformer中用的比上图更复杂一点，加入了norm和residual
+transformer中用的比上图更复杂一点，加入了norm和residual；再加入positional encoding
 
 ![image-20231115173929432](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151739518.png)
 
-光用self-attention没有位置信息，再加入positional encoding
+其他architecture设计方法
 
-![image-20231115174152736](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151741796.png)
-
-其他设计方法
-
-![image-20231115174252539](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151742607.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311151742607.png" alt="image-20231115174252539" style="zoom:5%;" />
 
 ***
 
 最常用autoregressive decoder；读入encoder输出的过程先省略，之后再讲；以语音识别为例
 
-BEGIN -> begin of sentence BOS，one-hot；size：vocabulary size，一共有多少个汉字字符/词汇/字母/subword，每个字符对应一个概率数值；可能一步错步步错；end作为句子的结束，作业中与BEGIN使用了同一个符号
+one-hot vocabulary，一共有多少个汉字字符/词汇/字母/subword，每个字符对应一个概率数值；end作为句子结束
 
-![image-20231115202746557](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152027603.png)
-
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152018653.png" alt="image-20231115201858611" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152029859.png" alt="image-20231115202922778" style="zoom:15%;" />![image-20231115202002389](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152020456.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152027603.png" alt="image-20231115202746557" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152018653.png" alt="image-20231115201858611" style="zoom:25%;" />![image-20251106195003332](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061950479.png)
 
 遮住中间部分，二者大致相同
 
 ![image-20231115202145604](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152021661.png)
 
-上图中的masked指只考虑左边的
+masked self-attention只考虑左边的input
 
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152023664.png" alt="image-20231115202342622" style="zoom:15%;" />
-
-原本self attention的b2
-
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202405210209548.png" style="zoom:20%;" />
-
-masked self attention的b2
-
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152025174.png" alt="image-20231115202517080" style="zoom:20%;" />
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152023664.png" alt="image-20231115202342622" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152025174.png" alt="image-20231115202517080" style="zoom:20%;" />
 
 NAT，non-autoregressive model，一次性产生整个句子；决定句子长度，learn一个classifier输出句子长度，或给300个begin，等他输出end（句子上限300） ；语音合成里常用NAT， 让系统讲快一点，把classifier的输出➗2，慢✖️2
 
-![image-20231115203921249](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152039293.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152039293.png" alt="image-20231115203921249" style="zoom:5%;" />
 
 ***
 
@@ -1294,9 +1238,9 @@ NAT，non-autoregressive model，一次性产生整个句子；决定句子长�
 
 cross attention在transformer之前就有了，及各种cross attention方式的研究
 
-![image-20231115204638433](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152046516.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152046516.png" alt="image-20231115204638433" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152059651.png" alt="image-20231115205932605" style="zoom:5%;" />
 
-![image-20231115205932605](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152059651.png)
+---
 
 以上是推理
 
@@ -1308,37 +1252,74 @@ cross attention在transformer之前就有了，及各种cross attention方式的
 
 chatbot或做summary，输出可以从输入中复制一些东西（专有名词）；这种能力叫[pointer network](https://www.youtube.com/watch?v=VdOyqNQ9aww)
 
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152111968.png" alt="image-20231115211142922" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152112986.png" alt="image-20231115211218934" style="zoom:20%;" />
-
-![image-20231115211422943](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152114025.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152111968.png" alt="image-20231115211142922" style="zoom:5%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152112986.png" alt="image-20231115211218934" style="zoom: 5%;" />![image-20231115211422943](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152114025.png)
 
 语音合成TTS（Text-to-Speech）中有时会出现短的词汇发音错误，因为ML是黑盒子；guided attention避免机器漏字，强迫机器看所有输入，适合语音辨识，语音合成，要求attention必须从左向右
 
-![image-20231115212053236](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152120288.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152120288.png" alt="image-20231115212053236" style="zoom:5%;" />
 
- 假设世界上只有两个字符，每次选概率最高的是greedy decoding
+Beam search instead of greedy decoding
 
 ![image-20231115212411975](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152124059.png)
 
 Beam search有时候有用，有时候没有用；如果任务答案非常明确，如语音识别，适合用Beam search；如果任务是创造性的，如TTS、写故事，不适合用Beam search，要给decoder多一些随机性；TTS中甚至推理时主动给decoder加noise（否则出来的声音像机关枪）
 
-![image-20231115212617346](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152126401.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152126401.png" alt="image-20231115212617346" style="zoom:5%;" />
 
-作业中评价机制是机器推理出的句子和GT做比较得出bleu score，因此validation set不用cross entropy而用bleu score，选bleu score最高的模型（bleu score 不能微分）
+作业中评价机制是机器推理出的句子和GT做比较得出bleu score，因此validation set不用cross entropy而用bleu score，选bleu score最高的模型（bleu score 不能微分）；遇到optimization无法解决的问题，用RL硬train一发 ，loss func当作激励函数，decoder当作agent；但很难实现
 
-遇到optimization无法解决的问题，用RL硬train一发 ，loss func当作激励函数，decoder当作agent；但很难实现
-
-![image-20231115213250881](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152132974.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152132974.png" alt="image-20231115213250881" style="zoom:5%;" />
 
 exposure bias，训练时看gt，推理时看自己上一个时刻的输出，可能一步错步步错 ；解决方法：训练时给机器看一些错误的输入，即schedule sampling；schedule sampling在transformer出现前就有，会伤害到transformer的平行化能力，后来有了专用于transformer的schedule sampling
 
-<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152136520.png" alt="image-20231115213623466" style="zoom:25%;" />![image-20231115213709873](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152137925.png)
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152136520.png" alt="image-20231115213623466" style="zoom:5%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202311152137925.png" alt="image-20231115213709873" style="zoom:5%;" />
 
 
 
+# Decoder-Only Transformer
+
+https://www.youtube.com/watch?v=bQ5BoolX9Ag
+
+masked self-attention is computing the similarity between next token and all previous tokens
+
+![image-20251103213308832](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511032133948.png)
+
+![image-20251103213559531](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511032135594.png)
+
+![image-20251103213802159](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511032138247.png)
+
+![image-20251103214536094](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511032145150.png)
+
+Start generating response after <EOS> of the input prompt
+
+![image-20251103214657298](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511032146340.png)
+
+Differences
+
+![image-20251103220616048](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511032206211.png)
+
+![image-20251103220742156](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511032207305.png) 
 
 
 
+# Sin Positional Encoding
+
+https://www.youtube.com/watch?v=T3OT8kqoqjc
+
+![image-20251104175453739](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511041754807.png)
+
+5. shift should be tiny
+6. there should be unnegligable difference between different positions
+
+![image-20251104175756309](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511041757375.png)
+
+similar idea to binary encoding
+
+![image-20251104175919723](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511041759786.png)
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511041800840.png" alt="image-20251104180044761" style="zoom:20%;" />
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511041802483.png" alt="image-20251104180213401" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511041802986.png" alt="image-20251104180233880" style="zoom:15%;" />
 
 
 
@@ -1670,15 +1651,215 @@ smoothing可能有副作用
 
 
 
+# RL
+
+![image-20251105221258212](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052212340.png)
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052214678.png" alt="image-20251105221412621" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052215041.png" alt="image-20251105221531996" style="zoom:25%;" />
+
+早期的policy并不是network而是一个look up table
+
+use score of action as prob to do sampling (70% do left), this is for exploration
+
+![；](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052219909.png)![image-20251105231304264](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052313345.png)
+
+游戏开始到结束称为一个episode，得到整场游戏的total reward；terminology：单个行动得到reward，整场游戏得到return=total reward
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052223704.png" alt="image-20251105222340658" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052224014.png" alt="image-20251105222443968" style="zoom:20%;" />
+
+terminology: trajectory / $\tau$ is a sequence of s and a
+
+reward depend on both action and observation, e.g., only when action is fire can the model get reward
+
+看起来像RNN，但是不一样在于输出a是sample得到的，有随机性；env and reward are also random
+
+![image-20251105222743319](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052227369.png)
+
+policy gradient
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052239611.png" alt="image-20251105223944531" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052240880.png" alt="image-20251105224002819" style="zoom:25%;" />
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052241482.png" alt="image-20251105224136392" style="zoom:25%;" />![image-20251105224219108](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052242186.png)
+
+不正确的版本，急功近利的actor没有长远眼光
+
+![image-20251105224617984](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052246031.png)![image-20251105224935329](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052249376.png)
+
+cumulated reward：a1的reward取决于之后所有发生的事情的reward
+
+问题：如果游戏很长，rN和r1好像没什么关系 -> 引入discounter factor
+
+![image-20251105225331037](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052253125.png) -> ![image-20251105225640547](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052256629.png)
+
+normalize the reward value, e.g., -b (baseline value)
+
+![image-20251105225813317](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052258396.png)
+
+A is reward; collecting data is expensive and time-consuming
+
+![image-20251105230106193](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052301237.png)![image-20251105230335374](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052303420.png)
+
+off policy can save the data collecion cost in for loop； off policy要意识到自己不是和环境interact的那个人
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052307323.png" alt="image-20251105230719271" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511052310275.png" alt="image-20251105231047212" style="zoom:25%;" />
 
 
 
+Actor Critic
+
+得到G1‘本来要玩完游戏，value fn用来没玩完游戏就预测G1‘，$V^\theta$的$\theta$表示value fn在观察参数为$\theta$的actor，同样的s，不同的$\theta$应该得到不同的value fn输出；discounted cumulated reward是G1‘
+
+![image-20251106002229570](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060022669.png)
+
+训练critic
+
+![image-20251106003043944](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060030012.png)
+
+另一种方法，只需要一个t的数据就可以训练，训练$V^\theta(s_t) - \gamma V^\theta(s_{t+1})$
+
+![image-20251106003212432](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060032503.png)
+
+2种方法在同样数据训练结果可能不一样，例子当中MC结果是0，但是TD结果是3/4（TD式子中的r是ra）
+
+![image-20251106003631377](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060036433.png)
+
+set normalization term b to be critic
+
+![image-20251106004252804](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060042870.png)![image-20251106004325569](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060043643.png)
+
+value fn output is like an expectation value, 图中G是cumulative reward (没有discount, discount之后notation是G'), average G is V
+
+![image-20251106004447847](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060044894.png)
+
+常用的Advantage actor-critic reward
+
+rt is the actual reward after at; At解释为采取at这个行动得到的平均reward和不采取at得到的平均reward的差值
+
+![image-20251106005945341](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060059450.png)
+
+可以共用参数
+
+![image-20251106011522592](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060115693.png)
+
+DQN
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511060116346.png" alt="image-20251106011613294" style="zoom:5%;" />
+
+Sparse reward，如下围棋一局结束才有reward；如机械臂拧螺丝，随机初始化之后乱动，无法拧紧螺丝获得reward
+
+reward shaping就是设计其他细小的reward，避免只看结果
+
+![image-20251106143420806](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061434920.png)
+
+打设计游戏，活着就扣分，强迫agent去杀敌人
+
+![image-20251106144315269](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061443396.png)
+
+Curiosity based reward，不给sparse reward（如通关游戏加分），只说让机器探索到有意义的新东西就给reward，即可通过部分关卡
+
+![image-20251106144656545](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061446607.png)
+
+No reward；人定的reward会被hack
+
+![image-20251106145128041](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061451097.png)
+
+记录人类（expert）和环境互动作为示范
+
+![image-20251106145354960](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061453062.png)
+
+可能没见过失败情况；可能无法区分人类的个人特质（无需学习）和普遍行为（需要学习）
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061455819.png" alt="image-20251106145551769" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061457777.png" alt="image-20251106145751717" style="zoom:25%;" />
+
+inverse RL: 用expert行为学不存在的reward
+
+![image-20251106150001540](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061500591.png)
+
+假设老师的行为可以取得最高reward（注意，不是完全模仿老师行为） ；similar to GAN
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061501305.png" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061503913.png" alt="image-20251106150342863" style="zoom:25%;" />
+
+robot IRL
+
+![image-20251106151542418](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061515517.png)![image-20251106151534905](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061515009.png)
 
 
 
+math of policy gradient
+
+![image-20251106152135879](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061521972.png)
+
+Total reward is random, we treat it as random variable and maximize the expected value
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061523915.png" alt="image-20251106152341842" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061815171.png" alt="image-20251106181512065" style="zoom:25%;" />
+
+$R(\tau)$ does not depend on $\theta$
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061816022.png" alt="image-20251106181638915" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061819784.png" alt="image-20251106181911722" style="zoom:25%;" />
+
+$p(r_1, s_2|s_1,a_1)$ depends on the game/environment
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061821794.png" alt="image-20251106182125745" style="zoom:20%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061822138.png" alt="image-20251106182203042" style="zoom:20%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061825161.png" alt="image-20251106182503065" style="zoom:20%;" />
+
+除p起到normalization作用；假设4个trajectory看见了同一个observation s，几率大的action b reward小，不normalize会倾向action b
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061829786.png" alt="image-20251106182934722" style="zoom:25%;" />![image-20251106183403572](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061834626.png)
 
 
 
+PPO
+
+importance sampling: we cannot sample from distri p, we can only sample from distri q
+
+![image-20251106184458674](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061844731.png)
+
+p和q不能差太多；需要sample很多次，sample到negative的绿色点才行
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061849835.png" alt="image-20251106184948777" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061854038.png" alt="image-20251106185452980" style="zoom:25%;" />
+
+训练$\theta$，$\theta'$只负责和环境互动
+
+![image-20251106185934181](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061859235.png)
+
+A is advantage, suppose $p_\theta(s_t) = p_{\theta'}(s_t)$; J is objective fn
+
+![image-20251106190517447](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061905500.png)
+
+为了让$\theta$和$\theta'$不要差太多，PPO add a KL divergence as constraint (TRPO set a separate constraint)；KL divergence算的是input同样一个state，output的action背后的prob distribution的差异
+
+![image-20251106191021033](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061910109.png)
+
+![image-20251106191637625](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061916746.png)
+
+PPO2：选两项中小的进行优化（min(第一项，第二项)）
+
+第二项的clip项是蓝线，第一项的![image-20251106192123183](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061921255.png)是绿线，取最小是红线，再乘![image-20251106192217244](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061922321.png)
+
+目标是让$p_\theta$和$p_{\theta'}$不要差太大
+
+- 如果A>0，reward是好的，希望$p_\theta$越大越好，但是和$ p_{\theta'}$差距不能大过$1+\epsilon$
+
+![image-20251106192322962](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511061923029.png)
+
+# DPO
+
+https://www.youtube.com/watch?v=k2pD3k1485A&t=68s
+
+DPO is to turn reward into prob
+
+$\pi_{ref}$ is the SFTed model
+
+![image-20251106225505958](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511062255067.png)
+
+To deal with negative reward, use exp, which turns into sigmoid
+
+![image-20251106230017265](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511062300431.png)
+
+![image-20251106230125977](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511062301050.png)
+
+![image-20251106230613830](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511062306902.png)
+
+![image-20251106230834211](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511062308284.png)
 
 
 
