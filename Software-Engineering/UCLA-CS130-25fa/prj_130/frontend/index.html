@@ -1,0 +1,166 @@
+<!-- note: written with GenAI assistance -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Manager - Tinyest URL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800" x-data="linkManager()">
+
+    <!-- Navigation -->
+    <nav class="bg-indigo-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="font-bold text-xl flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Tinyest URL
+            </div>
+            <div class="flex gap-4">
+                <a href="index.html" class="bg-indigo-700 px-3 py-1 rounded-md text-sm font-medium">Manage Links</a>
+                <a href="analytics.html" class="hover:bg-indigo-700 px-3 py-1 rounded-md text-sm font-medium transition">Analytics</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        
+        <!-- Header -->
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Manage Short Links</h1>
+            <p class="text-gray-600">Create new short links or manage existing ones with password protection.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            
+            <!-- CREATE SECTION -->
+            <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-indigo-500">
+                <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create New Link
+                </h2>
+                
+                <form @submit.prevent="createLink" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Destination URL</label>
+                        <input type="url" x-model="createForm.url" required placeholder="https://example.com" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Password Protection <span class="text-gray-400 font-normal">(Optional)</span>
+                        </label>
+                        <input type="password" x-model="createForm.password" placeholder="Secret password..." 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <p class="text-xs text-gray-500 mt-1">If set, this password will be required to edit or delete the link.</p>
+                    </div>
+
+                    <button type="submit" :disabled="isLoading" 
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 flex justify-center items-center disabled:opacity-70">
+                        <span x-show="!isLoading">Create Short Link</span>
+                        <span x-show="isLoading" class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
+                    </button>
+                </form>
+
+                <!-- Create Result -->
+                <div x-show="createdLink" x-transition class="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <p class="text-green-800 font-medium text-sm mb-2">Link Created Successfully! 🎉</p>
+                    <div class="flex items-center gap-2 bg-white p-2 rounded border border-green-100">
+                        <code class="text-indigo-600 font-bold flex-1" x-text="getShortUrl(createdLink)"></code>
+                        <button @click="copyToClipboard(getShortUrl(createdLink))" class="text-gray-400 hover:text-gray-600 p-1" title="Copy">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-500">
+                        Code: <span class="font-mono font-bold text-gray-700" x-text="createdLink"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MANAGE SECTION -->
+            <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-teal-500">
+                <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit / Delete Link
+                </h2>
+
+                <!-- Lookup Form -->
+                <div x-show="!managedLink" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Short Code</label>
+                        <input type="text" x-model="manageForm.code" placeholder="e.g. abc123" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" x-model="manageForm.password" placeholder="(Only if protected)" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <button @click="loadLink" :disabled="isLoading" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-md transition">
+                        Load Link Details
+                    </button>
+                </div>
+
+                <!-- Link Details & Actions -->
+                <div x-show="managedLink" x-transition class="space-y-4">
+                    <div class="bg-gray-50 p-3 rounded-md border text-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-mono font-bold text-gray-700" x-text="managedLink?.code"></span>
+                            <span x-show="managedLink?.password_protected" class="bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full border border-orange-200 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                </svg>
+                                Protected
+                            </span>
+                        </div>
+                        <div class="text-gray-500 mb-1">Visits: <span class="font-bold text-gray-800" x-text="managedLink?.visits"></span></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Destination URL</label>
+                        <input type="url" x-model="managedLinkUrl" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button @click="updateLink" :disabled="isLoading" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-md text-sm">
+                            Update URL
+                        </button>
+                        <button @click="deleteLink" :disabled="isLoading" class="bg-red-50 text-red-600 hover:bg-red-100 font-medium py-2 px-4 rounded-md text-sm border border-red-200">
+                            Delete
+                        </button>
+                    </div>
+                    
+                    <button @click="managedLink = null; manageForm.code = ''; manageForm.password = ''" class="w-full text-gray-500 text-xs hover:text-gray-700 underline mt-2">
+                        Cancel / Look up another
+                    </button>
+                </div>
+
+            </div>
+        </div>
+        
+        <!-- Messages -->
+        <div x-show="message" x-transition class="fixed bottom-4 right-4 max-w-sm w-full p-4 rounded-lg shadow-lg text-white" 
+            :class="messageType === 'error' ? 'bg-red-600' : 'bg-green-600'">
+            <div class="flex items-start gap-2">
+                <span x-text="message"></span>
+                <button @click="message = ''" class="ml-auto text-white/80 hover:text-white">✕</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/url-manager.js"></script>
+</body>
+</html>
+

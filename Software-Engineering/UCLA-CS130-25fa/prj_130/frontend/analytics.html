@@ -1,0 +1,136 @@
+<!-- note: written with GenAI assistance -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Tinyest URL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800" x-data="analyticsDashboard()">
+
+    <!-- Navigation -->
+    <nav class="bg-indigo-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="font-bold text-xl flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Tinyest URL
+            </div>
+            <div class="flex gap-4">
+                <a href="index.html" class="hover:bg-indigo-700 px-3 py-1 rounded-md text-sm font-medium transition">Manage Links</a>
+                <a href="analytics.html" class="bg-indigo-700 px-3 py-1 rounded-md text-sm font-medium">Analytics</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Link Analytics</h1>
+            <p class="text-gray-600">Track performance of your short links and top destinations.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            
+            <!-- LEFT: Top URLs Leaderboard -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-md p-6 border-t-4 border-purple-500">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Top Destinations
+                    </h2>
+                    <button @click="loadTopUrls" class="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                                <th class="px-4 py-3 rounded-tl-lg">Rank</th>
+                                <th class="px-4 py-3">Destination URL</th>
+                                <th class="px-4 py-3 text-right rounded-tr-lg">Total Visits</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="(item, index) in topUrls" :key="index">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-4 py-3 font-mono text-gray-400" x-text="index + 1"></td>
+                                    <td class="px-4 py-3 max-w-xs truncate">
+                                        <a :href="item.url" target="_blank" class="text-indigo-600 hover:underline" x-text="item.url"></a>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-bold text-gray-800" x-text="item.visits"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="topUrls.length === 0">
+                                <td colspan="3" class="px-4 py-8 text-center text-gray-400 italic">No data available yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RIGHT: Specific Link Lookup -->
+            <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500 h-fit">
+                <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Link Lookup
+                </h2>
+                
+                <div class="flex gap-2 mb-6">
+                    <input type="text" x-model="searchCode" placeholder="Code (e.g. abc123)" 
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+                    <button @click="loadLinkStats" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div x-show="linkStats" x-transition class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                    <div class="text-center mb-4">
+                        <div class="text-3xl font-bold text-blue-700" x-text="linkStats?.visits"></div>
+                        <div class="text-xs text-blue-600 uppercase tracking-wide font-semibold">Total Clicks</div>
+                    </div>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between border-b border-blue-200 pb-2">
+                            <span class="text-gray-500">Short Code:</span>
+                            <span class="font-mono font-bold text-gray-700" x-text="linkStats?.code"></span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 block mb-1">Destination:</span>
+                            <a :href="linkStats?.url" target="_blank" class="text-indigo-600 hover:underline break-all block" x-text="linkStats?.url"></a>
+                        </div>
+                        <div class="bg-white p-2 rounded text-xs text-gray-500 mt-2">
+                            <span class="font-bold text-gray-700" x-text="linkStats?.url_visits"></span> total visits across all links pointing to this destination.
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="error" x-transition class="mt-4 p-3 bg-red-50 text-red-700 rounded-md text-sm border border-red-200 text-center">
+                    <span x-text="error"></span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="js/analytics.js"></script>
+</body>
+</html>
+

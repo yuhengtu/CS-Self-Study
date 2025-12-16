@@ -1,0 +1,2 @@
+[2025-12-02 21:52:03.157893]:[0x0000787edec6a740]:Trace: config_parser: Began parsing config file
+[2025-12-02 21:52:03.158517]:[0x0000787edec6a740]:Error: config_parser: Failed to open config file

@@ -1,0 +1,6 @@
+file "list";
+server {
+  listen   80;
+  server_name file.com;
+  root /home/ubuntu/sites/file/;
+}

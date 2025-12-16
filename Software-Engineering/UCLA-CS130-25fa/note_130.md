@@ -16,8 +16,7 @@ make test
 cd build_coverage
 cmake -DCMAKE_BUILD_TYPE=Coverage ..
 make coverage
-...
-
+ctest --rerun-failed --output-on-failure
 ...
 git status
 git add .
@@ -42,13 +41,6 @@ git rebase main, rebase is better than merge. It takes all the commits on your f
 
 
 # Modern Cpp
-
-| Passing Style           | Definition Syntax      | Call Syntax | What gets passed?        | Can modify original?  | Typical usage                        |
-| ----------------------- | ---------------------- | ----------- | ------------------------ | --------------------- | ------------------------------------ |
-| Pass by value           | `void f(int x)`        | `f(a);`     | A **copy** of `a`        | ❌ No                  | Small, simple types                  |
-| Pass by reference       | `void f(int& x)`       | `f(a);`     | Original `a`             | ✅ Yes                 | Modify caller safely                 |
-| Pass by const reference | `void f(const int& x)` | `f(a);`     | Original `a`, read-only  | ❌ No                  | Large objects you don’t want to copy |
-| Pass by pointer         | `void f(int* x)`       | `f(&a);`    | Pointer to  original `a` | ✅ Yes, can be nullptr | Optional (nullptr) or dynamic memory |
 
 DO NOT use raw pointers (new & delete), use Smart Pointer and RAII
 
@@ -815,8 +807,6 @@ design example of CSVReader
 
 ![image-20251029165729361](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202510300757425.png)
 
-![](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202510300757491.png)
-
 4. error handling
 
 Change the return type of Read() to a type that can hold either a successful result or an error status
@@ -837,3 +827,1123 @@ Client checks status before accessing value
 Finally,
 
 ![image-20251029170042451](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202510300800516.png)
+
+
+
+# LEC11 Safety
+
+from user story to technical task
+
+Kanhan board: Trello, GitHub project, physical whiteboard
+
+
+
+Path Traversal: Read files outside the web root, like /etc/passwd
+
+- Server configured to serve files from a specific directory, the web root, e.g. /var/www/html/static
+- Server should be “jailed” inside this directory, unable to access files above it.
+
+Consider `GET /static/../../../../../etc/passwd`: `full_path = "/var/www/html/static/../../../../../etc/passwd"`
+
+Defence:
+
+1. URL Decode the request path
+2. Check if the path contains any `..` sequences, reject if found (400 Bad Request)
+3. Construct the full path (`web_root + request_path`) and use a library function to resolve it to its absolute, “canonical” form
+4. Check if the resulting canonical path starts with the canonical path of your web root, reject if not
+
+
+
+Consider `POST /api/Shoes` with malformed JSON
+
+- Invalid Input: `{ "brand": "Nike", "size": 10`
+- Empty Body: the POST request has no body at all
+- Wrong Data Types: the user sends a string where you expect a number: `{ "brand": "Nike", "size": "large" }`
+- Missing Fields: a required field is missing: `{ "brand": "Nike" }`
+- Extra Fields: the user sends fields you don’t recognize: `{ "brand": "Nike", "size": 10, "isAdmin": true }`
+
+Your code must validate all of these cases and return 404 if invalid:
+
+- Is the request body present if required?
+- Can the body be parsed correctly (e.g., as JSON)?
+- Are all required fields present in the parsed data?
+- Do all fields have the correct data type (string, number, boolean)?
+- Are the values within an acceptable range (e.g., `size` must be > 0)?
+
+
+
+400 status code tells the client that their request was bad. A good API also tells them why it was bad
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121639872.png" alt="image-20251112163953718" style="zoom:50%;" />
+
+Client errors (4xx): client's request is flawed
+
+- 400 Bad Request
+  - Use for syntax errors, e.g., The request body is not valid JSON.
+
+- 404 Not Found
+  - Use when the specific resource doesn't exist, e.g., `GET /api/Shoes/999` and shoe #999 doesn't exist.
+- 405 Method Not Allowed
+  - Use when the client uses the wrong HTTP method for a valid URL, e.g., `POST /api/Shoes/123`. The URL is valid, but you can't POST to a specific entity's URL.
+
+Server errors (5xx): The request was valid, but the server failed to fulfill it, need to debug!
+
+- 500 Internal Server Error
+  - Indicates a bug or an unexpected failure in your system, e.g., An unhandled exception is thrown; Your server can’t write to the filesystem (e.g., disk full, permissions error); A logic error leads to an impossible state.
+
+![image-20251112165121678](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121651747.png)
+
+![image-20251112165145755](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121651812.png)
+
+
+
+Access Control
+
+- Authentication (AuthN): “Are you who you say you are?”
+  - This is what a login page does (username/password, Google Sign-In, etc.).
+  - The output is a verified identity (e.g., “This is user joebruin@ucla.edu”).
+
+- Authorization (AuthZ): “Now that I know who you are, are you allowed to do this?”
+
+The principle of least privilege: A subject should be given only those privileges needed for it to complete its task.
+
+- Start with zero permissions.
+- Explicitly grant only the specific permissions that are absolutely necessary. Default to "deny."
+
+Access Control List (ACL): specifies which users (or groups) are granted which permissions on a particular object.
+
+- Object: The thing being protected (e.g., a file, a “Shoe” entity).
+- Subject: The user or process trying to access the object.
+- Permission: The action the subject is trying to perform (e.g., READ, WRITE, DELETE).
+
+![image-20251112170855750](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121708890.png)
+
+
+
+Denial of Service (DoS)
+
+- An attacker connects and sends a Content-Length: 1073741824 header (1 Gigabyte).
+- If the server tries to read the entire request body into memory before parsing, it will allocate a 1GB buffer.
+- A few of these requests are enough to exhaust all the RAM on your small cloud VM.
+- The operating system will start swapping to disk, performance will plummet, and eventually the server process will be killed by the OS for using too much memory.
+- Your service is down.
+
+Defence:
+
+- Check the Content-Length Header: If too large, do not read the body.
+- Reject Immediately: Send back 413 Payload Too Large status code and close the connection.
+
+Defense in Depth:
+
+- What if the client lies about the Content-Length?
+- As you read the body, count the bytes. If the client lied, stop reading, send 413, and close the connection.
+
+
+
+Log personally identifiable information (PII)
+
+- Only log PII when absolutely necessary with a plan to protect and eventually delete it!
+
+What counts as PII?
+
+- Direct Identifiers
+
+  - Full Name
+
+  - Email Address
+
+  - Social Security Number
+
+  - Home Address
+
+- Indirect Identifiers (Linkable PII)
+
+  - IP Address
+
+  - Device ID
+
+  - Geolocation (Latitude/Longitude)
+
+  - Date of Birth 
+
+PII Laws: GDPR (General Data Protection Regulation) in Europe and CCPA (California Consumer Privacy Act)
+
+- Consent: You can’t just collect data. You have to ask first, and the user must be able to opt-out.
+
+- Access / Data Portability: be able to provide a user with a complete copy of all the data you have stored about them.
+
+  Engineering Challenge: How to find all of a user’s data when it’s spread across dozens of different databases and log files?
+
+- The Right to be Forgotten: When a user deletes their account, you must delete all of their PII from your systems.
+
+  Engineering Challenge: This is extremely difficult in complex, distributed systems with backups and append-only logs.
+
+Many big data & logging systems are append-only
+
+- Many large-scale data systems (Kafka, Hadoop HDFS logs, BigQuery logs, ClickHouse tables, etc.) are designed to be append-only, meaning:
+  - You only add new records to the end
+  - You do not modify or delete old records (at least not immediately)
+
+Engineering solutions:
+
+- Solution 1: Aggregation: Instead of storing raw, event-level logs forever, process them and store only the summary statistics.
+
+  - can get total visitors, but cannot get total number of visitors
+
+- Solution 2: Pseudonymization: Instead of storing the real identifier, store a non-reversible, pseudonymous one.
+
+  - Request comes in for `visitor_id = "user123"`.
+
+  - Don’t log the ID directly, compute a cryptographic hash of it:
+
+    - `hashed_id = HMAC-SHA256("user123", secret_key)`
+
+    - This produces a garbage-looking string like `a1b2c3d4…`
+
+  - Log the `hashed_id`, not the real ID.
+
+Real anonymization is hard!
+
+- Data can be "re-identified"
+  - For example, if you log a hashed user ID along with their exact latitude and longitude, you can probably figure out who they are.
+- The space of identifiers matters
+  - Hashing an IP address is not very secure because there are only 4 billion possible IPv4 addresses. An attacker could pre-compute all of them.
+
+
+
+Newer processes
+
+- Privacy Design Documents:
+
+  - Similar to a technical design doc, but focused specifically on data handling
+
+  - What PII are you collecting?
+
+  - Why are you collecting it? (Data minimization)
+
+  - How long will you store it? (Retention policies)
+
+  - How will you delete it?
+
+- Privacy Review Councils:
+
+  - Dedicated team of privacy experts who review and approve designs
+
+- Privacy Approvals for Launch:
+
+  - Cannot launch a new feature without a formal sign-off from the privacy team
+
+
+
+# LEC12 Scale-up Problem
+
+Your single server is a success, getting more requests and hitting resource limits
+
+- Option 1: Big Iron / Vertical scaling / The “mainframe” or “supercomputer” approach:
+
+  - Make one server bigger and more powerful, more CPUs, more RAM, faster disks
+
+  - Historically, these machines were called “big iron”
+    - Built with redundant, hot-swappable hardware
+    - Designed for extreme reliability
+
+  - Cons:
+    - Extremely expensive, with diminishing returns
+    - Doubling the power costs much more than double the price
+    - There is a physical limit to how big and powerful a single server can become (hard to power or cool)
+    - Still a Single Point of Failure: A datacenter issue (power, network) will still take you offline
+
+- Option 2: Distributed system / Horizontal scaling / a “cluster” or “fleet”
+  - No single point of failure
+
+
+
+User to datacenter for Internet
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121749024.png" alt="image-20251112174936887" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121749222.png" alt="image-20251112174950160" style="zoom:25%;" />
+
+e.g.
+
+- Load balancer (manager) and web servers (workers)
+- MapReduce master (manager) and task nodes (workers)
+- Bigtable master (manager) and tablet servers (workers)
+
+
+
+Failure mode at scale
+
+- Correctness bugs: 
+
+  - Code bug, catch from tests
+
+- Performance bugs at scale:
+
+  - Code is correct, hard to catch in small-scale tests
+
+  - Often emerge from unexpected interactions between components
+
+Performance bugs failure modes
+
+1. Producer-consumer rate mismatch
+
+- A producer creates tasks and adds them to a queue, e.g., A web frontend receiving user uploads
+- A consumer pulls tasks from the queue and executes them, e.g., A backend worker processing those uploads
+- rate(producer) > rate(consumer) so queue grows indefinitely
+- e.g., new year eve people uploading too many photos, old uploads take hours of waiting time, new uploads might fail entirely -> system crush, single server still working
+
+Address:
+
+- Backpressure: If the queue gets too long, it should signal the producers to slow down or stop accepting new work (e.g., temporarily disable uploads)
+- Autoscaling Consumers: The system should automatically add more worker machines to the consumer fleet when the queue length grows, and remove them when it shrinks
+
+2. hotspots / unbalanced node (twitter the fail whale from celebrity tweets):
+
+- Systems often distribute load by user or product ID
+- Some users / data way more popular than others
+- Shards responsible for "hot" data gets overwhelmed. The rest of the system might be idle.
+
+Address:
+
+- Caching: Serve hot data from fast, in-memory cache instead of the database. A viral tweet can be cached once and served to millions of users without touching the database
+- Architectural Changes: Twitter eventually re-architected its timeline delivery, moving from a "pull" model to a "push" model for popular accounts (pull: when user refresh, twitter do a new query; push: when a popular tweet is posted, it is pre-pushed to all followers)
+
+![image-20251112185939200](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121859298.png)
+
+3. Synchronous global config rollout (2019 google cloud outage)
+
+- Servers designed to fetch and apply latest config at the same time to ensure consistency
+- Single bad change (e.g., a typo, a bad regex, an incorrect timeout value) is pushed to the config repo
+- Every server pulls the bad config and starts failing in the exact same way at the exact same time
+
+Address
+
+- Staged Rollouts: Never deploy a change to 100% of your fleet at once
+
+  - Start with a single server ("canary")
+
+  - Expand to a single cluster, then a single region
+
+  - Monitor for problems at each stage before proceeding
+
+- Automated Rollbacks: Your deployment system should automatically halt and reverse a rollout if it detects a spike in errors.
+
+![image-20251112190629024](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121906124.png)
+
+4. Amplified rare events (2019 google cloudfare outage)
+
+- one-in-a-billion events happen constantly with 100 million requests per day
+
+Address:
+
+- Performance test everything
+
+  - In a large-scale system, no such thing as a "trivial" or "harmless" change
+
+  - A single line of code (or regex!) can be a single point of failure with global impact
+
+  - The "rare event" is often a specific user input that code is not prepared for
+
+- Expert Code Review: Performance-sensitive components like regular expressions or parsing libraries require expert review
+
+- Fuzzing: Use automated tools to send a wide variety of random and malicious inputs to find these pathological edge cases before users do
+
+5. 2008 pakistan knock down youtube
+
+- In 2008, the government of Pakistan ordered its ISPs to block access to YouTube nationwide
+- Pakistan Telecom then attempted to do this by creating a "black hole" route for YouTube's IP addresses within their own network. They accidentally broadcast this malicious route to the entire internet 
+
+![image-20251112192013049](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511121920169.png)
+
+Address:
+
+- Design for resilience against external failures! Services depend on a huge number of external systems (DNS, BGP, other networks)
+
+- Monitoring: YouTube's engineers detected the problem because their monitoring systems saw that global traffic had dropped to zero.
+- Mitigation: They were able to fix it by announcing even more specific routes to reclaim their traffic, and by working with other network operators to block the malicious announcements.
+
+
+
+Performance planning: Performance optimization is endless, need to define an exit criteria:
+
+- When users can scroll at a smooth 60fps
+- When the page loads “instantly” (~100ms)
+- When it works well on crappy hardware and slow networks
+
+Google's web performance model: RAIL (Response, Animation, Idle, Load)
+
+- Response
+  -  Goal: Acknowledge user input in under 100 milliseconds (so that human do not feel delay)
+  - The key is to provide feedback if above 100 milliseconds:
+    - Show a loading spinner
+    - Disable the button to prevent double-clicks
+
+- Animation
+  - Goal: Produce each frame of an animation in under 16 milliseconds (To achieve a smooth, fluid visual experience (like scrolling), you need 60 fps, 1 second / 60 frames = 16.67ms per frame). If any frame takes longer than 16ms to compute and draw, the user will see a stutter or “jank.”
+- Idle
+  - Goal: When the user isn't doing anything, the application should also be doing as little as possible
+  - The main thread should be free so it can respond to the next user interaction instantly
+  - Break up long-running background tasks into smaller chunks of less than 50ms
+  - Even if a user clicks right in the middle of a background task, the app can still respond within the 100ms budget
+- Load
+  - Goal: Load the page and become interactive in under 1 second (Not everything has to be fully loaded! Just the main content so the user can start interacting with it)
+  - Progressive loading: Load the critical, visible content first, and defer everything else (like images below the fold, or less important scripts) until later
+
+We can't always improve actual performance, but we can almost always improve perceived performance.
+
+- Actual performance: How long it takes for a task to complete
+
+- Perceived performance is what truly matters: How long it feels like the task took
+
+  - Loading Shims / Skeletons: Instantly show a grayed-out “skeleton” of the UI layout
+
+  - Progress Bars: Provide a sense of forward momentum for long-running tasks.
+
+    Even a fake or non-linear progress bar is better than nothing!
+
+  - Optimistic UI Updates: Update the UI immediately, assuming an operation will succeed
+
+    Example: When you “like” a post, the button turns blue instantly, even before the server has confirmed the action.
+
+
+
+Capacity Planning
+
+At extreme loads, systems often stop scaling linearly (not Capacity = N * Capacity of one server)
+
+- Adding more servers might yield diminishing returns, or even make things worse!
+- Shared resources become bottlenecks: e.g., the database, a central cache, the load balancer itself
+- Network congestion increases
+- Increased coordination overhead between servers
+
+![image-20251113151812112](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131518308.png)
+
+Modern cloud platforms offer autoscaling, which can help, but needs data
+
+- Automatically adds or removes servers based on metrics like CPU utilization
+- Autoscaling systems often assume a linear response
+  - "If average CPU is over 70%, add another server."
+- If your system behaves non-linearly, simple autoscaling rules can fail
+- To configure autoscaling correctly, you need real data about how your system behaves under stress
+
+The solution: Load testing, Intentionally overwhelming your system with simulated traffic in a controlled environment
+
+- The goal is to generate the performance curve
+
+- This is the only way to gather the data needed for accurate capacity planning
+
+- Load testing must be done proactively before users trigger it
+
+- This allows you to
+
+  - Set accurate autoscaling policies
+
+  - Predict how many servers you'll need for next year's traffic
+  - Identify hidden bottlenecks in your system, e.g. database query that only appears at high load
+
+![image-20251113152547445](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131525520.png)
+
+
+
+# LEC13 Site Reliability Engineering
+
+Site Reliability Engineering (SRE): Use software engineering principles to make services more reliable and scalable
+
+Monitoring is the foundation
+
+![image-20251113152925083](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131529120.png)
+
+Production terminology
+
+- Job: A single process running on a machine.
+
+- Service: A collection of identical jobs, usually sitting behind a load balancer.
+
+![image-20251113153049949](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131530989.png)
+
+Black-box monitoring
+
+- OS-level monitoring
+
+- Agnostic of application state
+- No integration needed
+
+- Examples: CPU usage, Disk space, Network bandwidth, Process is running
+
+White-box monitoring
+
+- Application-level monitoring
+- Exposes internal state
+- Requires instrumentation
+- Examples: Number of requests, Response codes, Exceptions, Latency to other services
+
+
+
+Instrumentation: we need application to report its white-box metrics
+
+Three common methods:
+
+- The Pull Model: Expose a metrics endpoint (e.g., /metrics) that an external service read from
+- The Push Model: Write structured logs to stdout, push them to a central service
+- Human-Readable: Expose a human-friendly status page for live debugging
+
+1. The Pull Model
+
+Need a central, thread-safe place (need mutex, because multiple threads may update them at the same time) to store metrics:
+
+![image-20251113154051914](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131540952.png)
+
+create a monitor handler
+
+![image-20251113154138892](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131541958.png)
+
+Add calls to Increment wherever an interesting event occurs in your code:
+
+![image-20251113154236628](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131542699.png)
+
+` GET /monitoring` to see. The format (Prometheus exposition format) is simple, human-readable, and machine-parsable
+
+![image-20251113154410754](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131544828.png)
+
+Monitoring services scrape the data to create a time-series: Every N seconds, monitoring requests `/metrics` endpoint
+
+![image-20251113154651020](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131546091.png)
+
+2. The Push Model
+
+Structured logs
+
+- Machine parseable; Not human-readable sentences
+  - Cloud platforms (like Google Cloud Logging) are designed to automatically parse structured logs into metrics
+- Common formats include key-value pairs or JSON
+- Use regular expressions to extract
+  - e.g., the response code, `... code=200 ...`, Regular Expression: `code=([0-9]+)`
+  - e.g., handler name, `... handler="HealthHandler" ...`, Regular Expression: `handler="([^"]+)"`
+
+![image-20251113154916416](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131549496.png)
+
+![image-20251113154935559](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131549631.png)
+
+![image-20251113155344229](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131553310.png)
+
+3. Human-Readable: live debugging
+
+- Uptime: How long has this process been running?
+- Configuration: What config file and flags was it started with?
+- Request Counts: Total requests handled, broken down by handler or response code.
+- Cache Statistics: Hit/miss ratio, number of items in the cache.
+- Recent Errors: A log of the last N error messages.
+- Build Information: What version of the code is this job running? (Git hash, build timestamp).
+
+
+
+Use monitoring data for alert and dashboard
+
+![image-20251113162254608](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131622730.png)
+
+PromQL or SQL-like variants
+
+- To get requests per second: 
+  - PromQL: `rate(requests_total[5m])`
+  - Calculates the per-second average change rate of the `requests_total` counter over the last 5 minutes
+
+
+
+A good dashboard
+
+- easily understandable at a glance, i.e., within 5–10 seconds
+- Focuses on high-level service health, not implementation details
+- Provides links to more detailed information
+- Is tailored to its audience, e.g., SREs, developers, executives
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131734924.png" alt="image-20251113173425886" style="zoom:25%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131734496.png" alt="image-20251113173450459" style="zoom:25%;" />
+
+4 Golden Signals
+
+- Latency: The time it takes to service a request
+  - Distinguish between the latency of successful and failed requests, Failed requests might be artificially fast!
+  - Don't just track the average, which hide outliers. Track the distribution: 50th, 90th, 95th, and 99th percentiles
+
+- Traffic: A measure of how much demand is being placed on your system
+  - For a web server, this is typically measured in requests per second
+  - Helps contextualize the other signals. Is a rise in errors due to a bug, or just a massive spike in traffic?
+
+- Errors: The rate of requests that fail
+
+  - Failures can be explicit (HTTP 500) or implicit (HTTP 200 OK but with the wrong content)
+
+  - A rising error rate is one of the most direct and urgent indicators of a problem
+
+    This calculates the fraction of all requests that are resulting in a 5xx error:
+
+    ![image-20251113173335404](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131733535.png)
+
+- Saturation: How “full” your service is; how close it is to its capacity limit
+  - For constrained resources, e.g. memory, CPU, disk space
+  - Examples: CPU utilization at 90%, Free space on a persistent disk at 10%, Length of a request queue over a threshold
+
+
+
+Alert: so that you don't need to stare at dashboard
+
+Depending on how urgent the alert is, we can (don't alert too much, otherwise people ignore it):
+
+- File a bug, Low priority, non-urgent
+- Send an email, Informational, can wait until tomorrow
+- Page during work hours, Urgent, but not an emergency
+- Page 24x7, Critical emergency, user-facing outage
+
+A good alert is actionable, guides the on-call engineer with:
+
+- What is broken (the trigger or user impact)
+- Where to look first (link to a dashboard)
+- What to do (link to a playbook or runbook), A playbook is a pre-written document with step-by-step instructions for diagnosing and mitigating a specific known failure
+
+![image-20251113173658607](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131736684.png)
+
+![image-20251113174213427](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131742512.png)
+
+
+
+Service level objectives (SLO)
+
+downtime goal, "nines":
+
+- 99% ("2 nines"): 3.65 days / year
+- 99.9% ("3 nines"): 8.77 hours / year
+- 99.99% ("4 nines"): 52.6 minutes / year
+- 99.999% ("5 nines"): 5.26 minutes / year
+
+“5 nines” is an incredibly strict and expensive target. Most services, including Google Search, do not aim for this.
+
+
+
+Terms (We focus on SLIs and SLOs. SLAs are for the business and legal teams)
+
+- SLI (Service Level Indicator): The thing you are actually measuring, e.g., The fraction of successful HTTP requests
+- SLO (Service Level Objective): The target value for your SLI, e.g., 99.9% of HTTP requests in a month will be successful
+- SLA (Service Level Agreement): A business contract, often with financial penalties, e.g., If we fail to meet the 99.9% SLO, we will refund the customer 10% of their bill
+
+An SLO gives you an error budget
+
+- If availability SLO is 99.9%, error budget is 0.1%
+
+  - 0.1% of requests may fail. 1,000,000 requests per month = 1,000 failures allowed
+
+- The error budget is a data-driven tool for making engineering decisions.
+
+  - Budget remaining? It’s safe to launch a risky new feature.
+
+  - Budget exhausted? All hands on deck for reliability work. No new features until the service is stable.
+
+
+
+SLOs are a budget, not a goal to be beaten
+
+- If your SLO is 99.9%, and you achieve 99.999% availability, it is not necessarily better
+
+- You're not taking enough risks or launching features quickly enough
+
+![image-20251113175334867](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202511131753964.png)
+
+
+
+Outage reason:
+
+- New feature releases (main reason)
+- Changing configuration
+- Growth of the user base
+- A dependency team releasing a new version
+
+
+
+# LEC14 Documentation
+
+A new project includes
+
+- Product requirements docs (PRD): for PMs, avoid implementation details, define the target users
+- Technical design docs (DDs): for engineers
+- API docs: for developers
+- Contributor docs (README)
+- The code itself
+
+
+
+Key sections of a PRD
+
+- Vision / Motivation
+
+- Goals / Non-Goals
+
+- Requirements: ... shall ...
+- Success Criteria: The server shall respond to 95% of GET requests in under 200ms
+
+
+
+Key sections of a DD
+
+- Objective: technical goals
+- Background: context, what system it will touch
+- Detailed Design: APIs, Data models, Architecture diagrams
+- Alternatives Considered
+- Security and Privacy
+- Testing Plan
+- Performance and Scalability
+- Monitoring
+- Rollout Plan
+
+
+
+API docs
+
+- What does the method do: A clear, one-sentence summary
+- What are the parameters and returns
+- What exceptions can it throw or what error codes can it return
+- Are there any non-obvious pre-conditions or post-conditions?
+- A simple example of how to call it
+
+![image-20251206230528930](../Library/Application Support/typora-user-images/image-20251206230528930.png)
+
+
+
+make code self-documenting
+
+![image-20251206230637091](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512062306174.png)
+
+
+
+Justifying the engineering decisions (trade-offs)
+
+- Economic
+  - Development Cost: engineering time
+  - Operational Cost: expensive cloud resources (e.g., large databases, powerful VMs)
+  - Value vs. Cost trade-off
+
+- Usability
+  - User Experience (UX): Is the feature intuitive and easy to understand?
+  - Accessibility (a11y): Can people with disabilities use your feature? Does it work with screen readers? Can it be navigated with a keyboard?
+  - Discoverability: How will users find this new feature?
+- Scalability
+  - Load: the system perform under heavy traffic
+  - Data Volume: What happens when the amount of data grows by 100x? Does your design for the "List" operation in the CRUD API still work if there are a million entities? (Hint: this is why pagination is important)
+  - Concurrency: multiple users try to modify the same resource at the same time
+- Maintainability: Can "future you" fix it?
+  - Complexity
+  - Testability
+  - Dependencies: rely on stable, well-supported libraries
+- Health and safety
+  - Security: potential attacks (path traversal or improper input validation)
+  - Abuse: a malicious user exploit this feature to harm other users or the system (Could your file upload feature be used to fill up the server's disk?)
+  - Failure Modes: What happens when a dependency (like a database) fails? Does your feature fail gracefully, or does it take down the entire server?
+
+- Legal and political
+  - Data Privacy: What user data are you collecting, storing, or displaying? Are you complying with laws like GDPR (in Europe) or CCPA (in California)?
+  - Copyright and Licensing: Are you using third-party libraries? Are you complying with their licenses (for example, MIT, GPL)? If your feature handles user-generated content, how do you handle copyright infringement?
+  - Terms of Service: Does your feature operate within the bounds of your product's terms of service?
+
+- Ethical
+  - Bias: Could your feature perform differently for different groups of people? If you are building a photo-tagging feature, does it work equally well for people of all skin tones?
+  - Unintended Consequences: Could your feature be used to enable harassment, spread misinformation, or create filter bubbles?
+  - Transparency: If you are recommending content, can the user understand why they are seeing those recommendations?
+
+- Social and cultural
+  - Globalization: Does your feature work for users in different countries and cultures? Does it handle different languages, character sets, and date formats?
+  - Social Norms: For example, a feature that automatically shares a user's location might be great for a mapping app, but it would be a huge privacy violation in a different context.
+  - Inclusivity: Does your feature use language and imagery that is welcoming to all users?
+
+- Environmental
+  - Efficiency: Is your feature computationally expensive? A small inefficiency, when run at the scale of millions of users, can have a significant energy cost.
+  - Resource Consumption: Does your feature encourage behavior that uses a lot of power (for example, streaming high-resolution video, intensive background processing on a mobile device)?
+  - Sustainable Software Engineering: A growing field focused on minimizing the environmental impact of software.
+
+
+
+Postmortem: Outage report (never names the engineer who wrote the bug):
+
+- Title: What broke and when.
+- Summary: A brief, high-level overview for executives.
+- Impact: Who was affected and for how long.
+- Root Cause(s): The detailed analysis of the technical and process failures.
+- Timeline: A minute-by-minute log of the incident, from detection to resolution.
+- What Went Well / Poorly: An honest assessment of the incident response itself.
+- Action Items: A list of concrete, assigned tasks to prevent recurrence.
+
+Rretrospective: a small, informal postmortem for a project or a sprint
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081544888.png" alt="image-20251208154409787" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081544626.png" alt="image-20251208154424578" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081544177.png" alt="image-20251208154438130" style="zoom:15%;" />
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081544441.png" alt="image-20251208154449401" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081545419.png" alt="image-20251208154501382" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081545907.png" alt="image-20251208154515865" style="zoom:15%;" />
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081545349.png" alt="image-20251208154525313" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081545874.png" alt="image-20251208154535836" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081546949.png" alt="image-20251208154607900" style="zoom:15%;" />
+
+<img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081546132.png" alt="image-20251208154621090" style="zoom:15%;" /><img src="https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512081546379.png" alt="image-20251208154633331" style="zoom:15%;" />
+
+
+
+# LEC15 Deployment & Experiment
+
+Typical deployment environments:
+
+- Devel (Development environment): The "wild west" for developers
+  - Latest version of the code, often deployed automatically from the main branch
+  - Usually connects to test or development backends, not production data
+- Staging: A preview of production for final testing
+  - Meant to be an exact replica of the production environment
+  - Used for final QA, integration tests, and manual verification
+- Canary: A small slice of real users (e.g., 1–5%)
+  - If the canary "dies" (i.e., we see errors, crashes, high latency), stop the rollout immediately
+- Prod (Production environment): All user traffic
+  - Outages or downtime here are a big deal
+
+
+
+Rollout: Updating servers without downtime
+
+1. Stop directing traffic to a small set of servers
+2. Restart those servers with the new version
+3. Run health checks to ensure they are healthy
+4. Restore traffic to the updated servers
+5. Repeat until all servers are processed
+
+
+
+When doing rollout, consider:
+
+-  What code is running that calls me? Can I handle requests from older clients?
+- What code is running that I am calling? Can older servers I call handle my new requests?
+- Will everything still work if I have to roll back to an old version in a few days or Traffic is split between the old and new versions for a while?
+
+![image-20251206235211000](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512062352078.png)
+
+
+
+Solution: Independent protocal definition
+
+Protos (Protocol buffers):
+
+- Language-neutral, platform-neutral, extensible mechanism for serializing structured data
+- Defines how data is structured in one place
+- Generated source code can write and read structured data to and from a variety of data streams in numerous languages
+
+![image-20251207010748418](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070107462.png)
+
+Update Proto: must make changes that are both:
+
+- Backwards Compatible: Old code can read data written by new code
+  - Safe changes:
+    - Adding new fields: Old code will just ignore them
+    - Marking fields as deprecated
+  - Unsafe (breaking) changes:
+    - Deleting a required field
+    - Changing the type of a field: Example: int32 to string
+    - Changing the unique field number
+- Forwards Compatible: New code can read data written by old code
+  - Data written by old code may be missing some fields. Protos handle this gracefully:
+    - If a new field is missing from an old message, the default value is returned. e.g., 0 for integers, empty for strings
+    - New code must be able to handle these default values
+  - Do not write code that assumes a new field will always be present.
+
+
+
+Decoupling deployment from launch
+
+- Rapid deployment: We want to deploy code even if a feature is incomplete
+- Foreign dependencies: We want to deploy code but wait to enable it until dependencies are ready
+- Risk management: We want to be able to turn off a feature instantly if it is causing problems
+
+Solution: Feature flags
+
+- Present in code as named boolean flags. Example: new-save-button
+- A configuration file defines when specific flags should be enabled
+- Flags can be enabled for:
+  - A percentage of users
+  - A specific country or user group
+  - Only for company employees
+
+![image-20251207011415595](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070114695.png)
+
+Rapid deployment (Deploying incomplete features):
+
+- Wrap a new, unfinished feature in a flag that is turned off in production
+- Allows merging and deploying code incrementally without affecting any users
+- The feature is disabled or hidden in production
+- Enable for developers in the Devel environment for testing
+
+Foreign dependencies (What happens when a new frontend feature depends on a new backend API):
+
+- Do not try to time your deployments perfectly; this will fail
+- Coordinate with flags:
+  - Backend team deploys the feature wrapped in a flag that is turned off
+  - Frontend team deploys the feature wrapped in a flag that is turned off
+  - Once both deployments are complete, teams coordinate to turn both flags on. Even better, use the same flag
+
+Risk management (What happens if you launch a new feature and monitoring dashboards show high error rates and latency)
+
+- The slow way: Start a rollback of the entire deployment
+  - This could take an hour or more, during which users are still affected
+- The fast way: Go to the feature flag dashboard and turn the flag OFF
+  - Within seconds, all users are routed back to the old, stable code path
+  - This is the emergency "kill switch"
+
+
+
+Rolling the flags
+
+- If flags are defined statically, you would need to re-deploy your server to update values.
+
+- Instead of static configs, make them dynamic!
+  - A server can periodically fetch the latest flag configuration from a central place
+  - Pushing a new config then affects feature behavior in seconds
+
+- This allows separation of feature flags configs from running binaries
+
+![image-20251207012256260](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070122306.png)
+
+
+
+Experiment
+
+Evaluate features: Run an experiment
+
+- Roll it out to a small, random percentage of users
+- Compare their behavior to the behavior of users who didn't get the feature
+
+Avoid biased proactive feedback, use A/B testing
+
+![image-20251207012558333](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070125382.png)
+
+- Define key metrics:
+  - Goal Metrics: What are you trying to improve?
+    - e.g. Click-through rate, conversion rate, session duration, revenue per user
+  - Guardrail Metrics: What do you not want to make worse?
+    - e.g. Page load time, error rate, uninstalls, support tickets
+- Divert your users:
+  - Randomly assign users to either the control or treatment group
+  - The assignment must be consistent (or "sticky")
+  - Users should see the same control or treatment day-over-day (Behavior change takes time)
+  - This is typically handled using some sort of stable ID (User ID, Session ID, Cookie)
+
+![image-20251207012859449](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070128499.png)
+
+- Diversion criteria
+  - User-level:
+    - The most common
+    - Ensures a consistent experience for each person
+  - Session-level:
+    - Each session is randomly assigned
+  - Request-level:
+    - Each API call is randomly assigned
+    - Useful for stateless backend changes (e.g., testing a new search algorithm)
+  - Country-level:
+    - All users in a country get the same experience. Useful for region-specific launches.
+
+
+
+Advanced analysis: Slices & counterfactuals
+
+- Slices: Working with small audiences
+  - Imagine you're changing the "Create Playlist" button on YouTube. Only a tiny fraction of users create playlists on any given day. If you run a 1% vs. 1% experiment, the vast majority of users in both groups will not be affected
+  - A slice is a targeted narrow population of users affected by a change. Example: users who visited the "Create Playlist" page before.
+
+
+![image-20251207013249506](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070132555.png)
+
+- Counterfactuals: In an A/B experiment, the control group slice serves as the counterfactual
+  - Analysis Example:
+    - Average playlists per user in Treatment Slice: 1.2
+    - Average playlists per user in Control Slice: 1.0
+  - Conclusion: Treatment caused a 20% increase in playlist creation
+
+
+
+Interpreting Experiment Results
+
+- If a result is not statistically significant, you cannot claim your feature had an impact
+  - Statistical significance is the probability that the observed difference is due to random luck, a.k.a. "p-value"
+  - Common value is p < 0.05
+  - < 5% chance the result is random
+  - = 95% chance the result is real
+
+- Experiment results are rarely a clear win. This is a product and business decision, not just a data decision.
+  - Example: Making the "Subscribe" button bigger
+  - Goal Metric: Subscriptions increase by 5%
+  - Guardrail Metric: Page load time increases by 200ms
+  - Guardrail Metric: Revenue from ads on the page decreases by 2%
+
+
+
+Decisions after experiments
+
+- Launch:
+  - The results are a clear, positive win
+  - Roll the feature out to 100% of users
+- Iterate:
+  - The results are mixed or promising, but not a clear win
+  - Go back to the drawing board, make changes, and run a new experiment
+- Kill:
+  - The results are flat or negative, the feature did not work
+  - Archive the code and move on to the next idea
+  - This is a hard but critical part of the process!
+
+![image-20251207014434689](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070144735.png)
+
+
+
+# LEC16 Team & Career
+
+Core Team:
+
+- Engineers (Individual Contributors / ICs): Responsible for implementation, testing, design, and maintenance
+
+![image-20251207005329040](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070054183.png)
+
+- Engineering Manager (EM):
+  - Goal: Ensure the team is productive and happy
+  - Focus: Hiring, promotions, career growth, shielding the team from chaos
+  - Sometimes technical, often hands-off on code
+
+![image-20251207004839500](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070048592.png)
+
+- Tech lead (TL): In charge of the technical direction of the project
+  - Pro: You get to make the big architectural decisions
+  - Con: You do the grungy work (fixing builds, monitoring, filling gaps)
+
+![image-20251207004922659](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070049697.png)
+
+Extended Team:
+
+- Product managers (PMs), Aka Program Managers, Producers (in gaming)
+  - Understand the market and user needs
+  - Define the "What" and the "Why"
+  - Prioritize features (deciding what not to build)
+
+![image-20251207005007378](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070050418.png)
+
+![image-20251207005117251](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070051294.png)
+
+![image-20251207005200623](https://cdn.jsdelivr.net/gh/yuhengtu/typora_images@master/img/202512070052668.png)
+
+- Testers & QA
+  - Manual Testers:
+    - Essential for UI/interactive apps
+    - They find the edge cases you didn't think of
+  - Software Engineers in Test (SET / SDET):
+    - Write code to test code
+    - Build automation frameworks and infrastructure
+    - Goal: High quality, automated verification
+
+- UI/UX designers & researchers
+  - UI Designers:
+    - Create the visual look and feel (Photoshop, Figma)
+    - Define specs: hex colors, pixel margins, font sizes
+  - UX Researchers:
+    - The “scientists” of user behavior
+    - Conduct usability studies (often behind a one-way mirror)
+    - Goal: Validate that the design actually solves the user’s problem
+
+Specialized Role:
+
+- Program Manager (PgM):
+  - Focus: Schedules, coordination, dependencies, “Are we on track?”
+- Architect / UberTL (tech lead of tech leads):
+  - Defines high-level technical vision across teams
+  - Ensures systems fit together (for example, “We are all using gRPC”)
+- Operations / SRE (Site Reliability Engineering):
+  - Goal: Keep the service running
+  - Philosophy: Automate operational overhead
+  - They carry the pager (means on call for emergency) so you do not have to (hopefully)
+
+- Technical Writers:
+  - Write external documentation, API guides, and manuals
+  - They translate “engineer-speak” into human language
+- Release Engineers:
+  - Manage the build and deployment pipeline
+  - Ensure releases are reproducible, signed, and safe
+  - The Gatekeepers: They control the “Push to Prod” button
+
+Business Side:
+
+- Executives:
+  - Set the strategic direction and budget
+
+- Marketing (Product Marketing Managers):
+  - Figure out how to position and sell the product
+  - They might sell features that don’t exist (yet)
+  - They bring in the revenue for your salary
+
+- HR (Human Resources):
+  - Role: Hiring, benefits, and handling serious personnel issues
+  - When to escalate:
+    - When the issue is about people, not code
+    - Harassment, discrimination, or creating a hostile work environment
+  - Advice:
+    - Keep a record (paper trail) of bad behavior
+    - HR is there to protect the company, but that often aligns with removing toxic behavior
+
+
+
+Career levels (Google level notation)
+
+- Junior (L3/E3):
+  - Fixing bugs, small features
+  - Needs clear direction: "Implement function X"
+- Mid-Level (L4/E4):
+  - Owns features or modules
+  - Can take a vague task and figure out the details
+- Senior (L5/E5):
+  - Designs systems, writes Design Docs
+  - Asks “What services do we need?”
+- Staff/Principal (L6+):
+  - Sets technical strategy, solves cross-team problems
+  - Starts new projects from scratch
+
+
+
+Career is decades, value consistency over intensity, avoid burnout
+
+- Work/life balance goals
+  - Rule 1: No all-nighters: Code written at 3 AM is usually garbage anyway
+  - Rule 2: Don’t work on weekends: Protect your recharge time
+  - Rule 3: Unplug on vacation: If you are checking Slack on the beach, you aren’t on vacation; you are just working remotely with a better view
+- A practical setup
+  - Separation of Concerns:
+    - No work email or Slack on your personal phone. (Or turn off notifications)
+    - Use a separate work computer if possible
+  - Respecting Others:
+    - Scheduled Send: If you work late, schedule emails or messages to arrive at 9:00 AM the next day
+    - Don’t normalize after-hours pings
+
+- How to really take a vacation
+  - Preparation:
+    - Plan early and broadcast your dates
+    - Designate a Point of Contact (POC): “If this breaks, talk to Bob.”
+  - Execution:
+    - Do not respond. If you respond to one email, people will send you five more
+  - For the Team:
+    - Do not email the person on vacation
+    - If they are the only person who knows how to fix something, you need to fix that
+
+
+
+Negotiation
+
+- Recommended Reading: Getting More by Stuart Diamond
+- The Mindset:
+  - Negotiation isn’t about “winning” or “beating” the other person
+  - It’s about meeting your goals
+    - “Are my actions right now helping me meet my goals?”
+    - If getting angry doesn’t help your goal, don’t get angry
+
+- The most important person is them:
+  - You can't persuade someone if you don't understand what they value
+  - Use empathy. “We both want this project to succeed”
+- Be incremental:
+  - Don’t ask for the moon immediately
+  - Build trust with small wins
+- Trade things of unequal value:
+  - Trade something cheap for you but valuable to them
+  - Example: “I’ll take the on-call shift this weekend if I can take next Friday off (valuable to me).”
+- Watch out for these anti-patterns
+  - “Brownian Motion”: Everyone is busy, but nobody knows why or what the goal is
+  - The Telephone Game: Too many layers of indirection between you and the customer
+  - The Zombie Project: No sponsorship from leadership. The project isn’t aligned with business strategy
+  - Advice: If you see these signs, try to fix them. If you can’t fix them, it might be time to look for a new team

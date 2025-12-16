@@ -1,0 +1,18 @@
+server {
+  listen 8080;
+
+  location /api/link {
+    handler link_manage;
+    data_path ../bin/tmp/link_data;
+  }
+
+  location /l {
+    handler link_redirect;
+    data_path ../bin/tmp/link_data;
+  }
+
+  location /analytics {
+    handler analytics;
+    data_path ../bin/tmp/link_data;
+  }
+}

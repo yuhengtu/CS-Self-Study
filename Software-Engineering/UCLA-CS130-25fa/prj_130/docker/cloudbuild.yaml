@@ -1,0 +1,37 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    docker pull gcr.io/$PROJECT_ID/semiconductor-savants:base || exit 0
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-f', 'docker/base.Dockerfile',
+    '-t', 'semiconductor-savants:base',
+    '-t', 'gcr.io/$PROJECT_ID/semiconductor-savants:base',
+    '--cache-from', 'gcr.io/$PROJECT_ID/semiconductor-savants:base',
+    '.'
+  ]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/semiconductor-savants:base']
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-f', 'docker/Dockerfile',
+    '-t', 'gcr.io/$PROJECT_ID/semiconductor-savants:latest',
+    '.'
+  ]
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-f', 'docker/coverage.Dockerfile',
+    '-t', 'gcr.io/$PROJECT_ID/semiconductor-savants:coverage',
+    '--cache-from', 'gcr.io/$PROJECT_ID/semiconductor-savants:base',
+    '.'
+  ]
+images:
+- 'gcr.io/$PROJECT_ID/semiconductor-savants:base'
+- 'gcr.io/$PROJECT_ID/semiconductor-savants:latest'
+- 'gcr.io/$PROJECT_ID/semiconductor-savants:coverage'

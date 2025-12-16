@@ -1,0 +1,11 @@
+server {
+  listen 8080;
+
+  location / {
+    handler echo;
+  }
+
+  location /sleep {
+    handler sleep;
+  }
+}

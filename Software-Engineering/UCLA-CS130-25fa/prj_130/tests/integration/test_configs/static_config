@@ -1,0 +1,12 @@
+server {
+  listen 8080;
+
+  location /echo {
+    handler echo;
+  }
+
+  location /static {
+    handler static;
+    root ../../tests/static_test_files;
+  }
+}

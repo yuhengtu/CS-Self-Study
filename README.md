@@ -1,6 +1,6 @@
 # Introduction
 
-This is a CS self learning repository following [csdiy](https://csdiy.wiki/).
+This is a CS self-study repository following [csdiy](https://csdiy.wiki/).
 
 No credits, no GPA, pursue knowledge, to collide with the smartest brains of humanity.
 
@@ -8,7 +8,7 @@ Thanks for the open source courses and materials.
 
 If I have uploaded inappropriate content, please contact me at yuhengtuece@gmail.com, and I will delete it immediately.
 
-# Contents
+# Outline
 
 - Linear Algebra
   - MIT 18.06 11fa
@@ -38,4 +38,6 @@ If I have uploaded inappropriate content, please contact me at yuhengtuece@gmail
   - UMASS Network 20fa
 - Software Engineering
   - UCLA CS130 25fa
+- Statistical-Finance
+  - UCLA StatsC283 25fa
 

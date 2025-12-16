@@ -1,0 +1,49 @@
+server {
+  listen 80;
+
+  location / {
+    handler not_found;
+  }
+
+  location /echo {
+    handler echo;
+  }
+
+  location /static {
+    handler static;
+    root /app/static;
+  }
+
+  location /app {
+    handler static;
+    root /app/frontend;
+  }
+
+  location /api {
+    handler crud;
+    data_path /mnt/storage/crud;
+  }
+
+  location /api/link {
+    handler link_manage;
+    data_path /mnt/storage/link_data;
+  }
+
+  location /l {
+    handler link_redirect;
+    data_path /mnt/storage/link_data;
+  }
+
+  location /analytics {
+    handler analytics;
+    data_path /mnt/storage/link_data;
+  }
+
+  location /health {
+    handler health;
+  }
+
+  location /sleep {
+    handler sleep;
+  }
+}
