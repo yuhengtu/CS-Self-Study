@@ -27,7 +27,7 @@ If I have uploaded inappropriate content, please contact me at yuhengtuece@gmail
   - Coursera ML 22
   - UCB CS189 24sp
   - NTU DL(HUNGYI-LEE) 22sp
-  - Stanford-CS336-25sp
+  - Stanford CS336 25sp
 - Cryptography
   - UCB CS171 24sp
 
@@ -39,6 +39,7 @@ If I have uploaded inappropriate content, please contact me at yuhengtuece@gmail
   - UMASS Network 20fa
 - Software Engineering
   - UCLA CS130 25fa
-- Statistical-Finance
+- Statistical Finance
   - UCLA StatsC283 25fa
+
 
